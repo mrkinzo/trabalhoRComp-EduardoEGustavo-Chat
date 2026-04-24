@@ -81,7 +81,7 @@ def atender_produtor(conn, addr):
             while True:
                 # Guarda as mensagens recebidas
                 data = conn.recv(1024)
-                #se o cliente saiu, encerra a conexão
+                # Se o cliente saiu, encerra a conexão
                 if not data: break
                 
                 # Formatação das mensagens - pega a hora atual e monta a mensagem com o nickname,
