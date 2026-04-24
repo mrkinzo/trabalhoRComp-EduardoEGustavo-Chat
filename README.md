@@ -1,4 +1,4 @@
-# 📡 Chat via Sockets — Documentação da Aplicação
+# Chat via Sockets — Documentação da Aplicação
 
 Aplicação de chat em tempo real baseada em **sockets TCP** com arquitetura **produtor-consumidor**, implementada em Python. O sistema é composto por três arquivos independentes que se comunicam através de um servidor central.
 
