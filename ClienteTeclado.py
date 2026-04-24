@@ -1,73 +1,72 @@
-
 import socket
 import time
 
-#localhost
 HOST = "127.0.0.1" 
-#porta para comunicar
 PORT = 9002
 
-#função para conectar ao servidor
+# Cria a função para estabelecer uma conexão com o servidor.
 def conectar_servidor():
-    #tenta conectar até dar certo
+
+    # Tenta estabelecer uma conexão até dar certo.
     while True:
         try:
-            #criando o socket, o canal de comunicação
+            # Cria o socket.
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            #tenta a conexão no host e port definidos
+            # Tenta a conexão no host e porta definidos.
             s.connect((HOST, PORT))
-            #só aparece se a conexão funcionou
             print(" Conectado ao servidor!")
             
-            #recebe "Digite seu Nickname" e converte de bytes para texto
+            # Recebe "Digite seu Nickname".
             pergunta = s.recv(1024).decode("utf-8")
-            #mostra a pergunta para o usuário e espera a resposta
+            # Exibe a mensagem e espera a resposta do usuário.
             nick = input(pergunta)
-            #envia o nickname para o servidor
+            # Envia o nickname para o servidor.
             s.sendall(nick.encode("utf-8"))
 
-            #retorna a conexão pronta 
+            # Retorna a conexão pronta.
             return s
-        #se o servidor não estiver ligado, espera 2 segundos para tentar conectar novamente
+        
+        # Tratamento de exceções - se o servidor não estiver ligado, espera 2 segundos e tenta a conexão de novo,
+        #qualquer outro erro exibe uma mensagem mostrando qual foi o erro ocorrdo.
         except ConnectionRefusedError:
             print(" Aguardando servidor... Tentando novamente em 2 segundos")
             time.sleep(2)
-        #se houver qualquer outro erro, ele também espera 2 segundo para conectar novamente
         except Exception as e:
             print(f"Erro ao conectar: {e}")
             time.sleep(2)
 
-#função principal 
+# Cria a função para o envio de mensagens .
 def main():
-    #executa a função que faz a conexão com o servidor
+    
+    # Executa a função que conecta com o servidor.
     socket_cliente = conectar_servidor()
-    #mostra as instruções
-    print("Digite suas mensagens (ou 'sair' para encerrar):")
-    #enquanto ele estiver ativo, permite envio de mensagens continuamente
+    print("Digite suas mensagens (ou sair para encerrar):")
+    # Enquanto estiver ativo, permite envio de mensagens continuamente.
     while True:
         try:
-            #espera o usuário digitar
+            # Espera o usuário digitar.
             mensagem = input("_")
-            #se digitar sair, ele encerra
+            # Se digitar "sair" a conexão é encerrada.
             if mensagem.lower() == 'sair': break
-            #se for vazia ele ignora
+            # Se for vazio ele ignora e continua.
             if not mensagem.strip(): continue
-            #envia a mensagem ao servidor
+            # Envia a mensage para o servidor.
             socket_cliente.sendall(mensagem.encode("utf-8"))
             
-            #recebe a confirmação do envio da mensagem pelo servidor
+            # Recebe a confirmação do envio da mensagem.
             confirmacao = socket_cliente.recv(1024)
             
-        #se a conexão cair, fecha a atual e tenta conectar de novo
+        # Tratamento de exceções - se a conexão caiu de forma abrupta ele termina a conexão e tenta reconectar,
+        #qualquer outro erro ele informa qual foi o erro ocorrido e encerra o loop.
         except (BrokenPipeError, ConnectionResetError):
             print(" Conexão perdida. Tentando reconectar...")
             socket_cliente.close()
             socket_cliente = conectar_servidor()
-        #se ocorrer qualquer outra exceção ele mostra o erro e encerra o loop
         except Exception as e:
             print(f"Erro: {e}")
             break
-    #fecha a conexão 
+
+    # Fecha a conexão. 
     socket_cliente.close()
 
 if __name__ == "__main__":
