@@ -11,7 +11,7 @@ def main():
         # Tenta se conectar ao servidor.
         s.connect((HOST, PORT))
 
-        # Recebe a mensagem para enviar o nome do servidor.
+        # Recebe a mensagem para enviar o nome, do servidor.
         pergunta = s.recv(1024).decode("utf-8")
         # Exibe a pergunta e espera o usuário digitar.
         nome = input(pergunta)
@@ -20,7 +20,7 @@ def main():
 
         # Mantém o cliante rodando.
         while True:
-            # Espera o servidor mandar uma mensagem
+            # Espera o servidor mandar uma mensagem.
             data = s.recv(4096)
             # Se não vier nada, o loop para.
             if not data:
