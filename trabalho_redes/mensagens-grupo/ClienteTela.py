@@ -26,7 +26,7 @@ def iniciar_tela():
                 print(f"\n{data.decode('utf-8').strip()}")
 
     # Tratamento de exceções - se o servidor recusou a conexão, exibe uma mensagem alertando o usuário,
-    #qualquer outro erro ele exibe o erro real o
+    #qualquer outro erro ele exibe o erro real.
     except ConnectionRefusedError:
         print("[!] Erro: Servidor não está online.")
     except Exception as e:
