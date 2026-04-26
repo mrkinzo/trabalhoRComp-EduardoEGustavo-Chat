@@ -35,7 +35,7 @@ def conectar_servidor():
             print(f"Erro ao conectar: {e}")
             time.sleep(2)
 
-# Cria a função para o envio de mensagens .
+# Cria a função para o envio de mensagens.
 def main():
     
     # Executa a função que conecta com o servidor.
@@ -50,7 +50,7 @@ def main():
             if mensagem.lower() == 'sair': break
             # Se for vazio ele ignora e continua.
             if not mensagem.strip(): continue
-            # Envia a mensage para o servidor.
+            # Envia a mensagem para o servidor.
             socket_cliente.sendall(mensagem.encode("utf-8"))
             
             # Recebe a confirmação do envio da mensagem.
