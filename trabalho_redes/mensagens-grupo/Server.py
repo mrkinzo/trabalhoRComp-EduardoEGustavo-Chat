@@ -64,7 +64,7 @@ def escutar_teclado():
         while True:
             # Se alguém conectou, aceita a conexão.
             conn, addr = s.accept()
-            # Criar uma thread para cada teclado que permite múltiplos digitadores.
+            # Cria uma thread para cada teclado que permite múltiplos digitadores.
             threading.Thread(target=atender_produtor, args=(conn, addr), daemon=True).start()
 
 # Cria a função que atende o produtor.
@@ -73,15 +73,15 @@ def atender_produtor(conn, addr):
     # Com a conexão estabelecida...
     with conn:
         try:
-            # Solicita o nickname do produtor
+            # Solicita o nickname do produtor.
             conn.sendall("Digite seu Nickname: ".encode("utf-8"))
-            # Recebe o nickname
+            # Recebe o nickname.
             nickname = conn.recv(1024).decode("utf-8").strip() or "Anon"
 
             while True:
-                # Guarda as mensagens recebidas
+                # Guarda as mensagens recebidas.
                 data = conn.recv(1024)
-                # Se o cliente saiu, encerra a conexão
+                # Se o cliente saiu, encerra a conexão.
                 if not data: break
                 
                 # Formatação das mensagens - pega a hora atual e monta a mensagem com o nickname,
@@ -110,7 +110,7 @@ def gerenciar_telas():
         print(f"[*] Aguardando Telas na porta {PORTA_SAIDA}...")
         
         while True:
-            # Aceita conexões do consumidor
+            # Aceita conexões do consumidor.
             conn, addr = s.accept()
             # Indica que um cliente se conectou.
             SEMAFORO_CLIENTES.acquire()
