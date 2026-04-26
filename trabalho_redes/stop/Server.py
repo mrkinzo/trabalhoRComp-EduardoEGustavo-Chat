@@ -8,7 +8,7 @@ PORTA = 9002
 
 # Define a quantidade de jogadores necessários para começar.
 N_JOGADORES = 2
-# Define o número de rodadas
+# Define o número de rodadas.
 N_RODADAS = 2
 
 # Cria uma lista que guarda os clientes que estão jogando.
@@ -120,9 +120,9 @@ def calcular_pontos():
         # Pega as respostas dos jogadores.
         respostas_coluna = [r[1][i].strip().lower() for r in RESPOSTAS]
         
-        # Percorre cada jogador
+        # Percorre cada jogador.
         for nome, respostas in RESPOSTAS:
-            # Pega a reposta do jogador na categoria específica
+            # Pega a reposta do jogador na categoria específica.
             resposta = respostas[i].strip().lower()
             # Verifica se a resposta é unica - se for recebe 3 pontos, senão recebe 1 ponto.    
             if respostas_coluna.count(resposta) == 1:
@@ -159,7 +159,7 @@ def iniciar_servidor():
         s.listen()
         print("Servidor está aguardando jogadores")
 
-        # Mantém o servidor rodando
+        # Mantém o servidor rodando.
         while True:
             # Aceita pedidos de conexão.
             conn, addr = s.accept() 
