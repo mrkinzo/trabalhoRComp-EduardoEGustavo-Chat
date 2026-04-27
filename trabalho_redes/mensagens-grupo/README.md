@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-O projeto é composto por três arquivos Python que formam um sistema de mensagens produtor-consumidor via sockets TCP:
+O projeto é composto por três arquivos Python que formam um sistema de mensagens produtor-consumidor.
 
 - **Server.py** — servidor central que recebe mensagens e as redistribui
 - **ClienteTeclado.py** — cliente produtor, responsável por enviar mensagens
