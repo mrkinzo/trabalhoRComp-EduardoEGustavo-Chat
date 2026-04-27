@@ -6,46 +6,44 @@ import random
 HOST = "0.0.0.0"
 PORTA = 9002
 
-# Define a quantidade de jogadores necessários para começar.
-N_JOGADORES = 2
-# Define o número de rodadas
-N_RODADAS = 2
+N_JOGADORES = 2 # Quantidade mínima de jogadores para iniciar a partida.
+N_RODADAS = 2 # Define o número de rodadas por partida.
 
-# Cria uma lista que guarda os clientes que estão jogando.
-CLIENTES = []
-# Cria uma lista que guarda as respostas das rodadas.
-RESPOSTAS = []
-# Cria uma lista que guarda a pontuação de cada jogador.
-PONTUACOES = {}
+CLIENTES = [] # Lista que guarda os clientes conectados.
+RESPOSTAS = [] # Lista que guarda as respostas dos jogadores.
+PONTUACOES = {} # Lista que guarda a pontuação de cada jogador.
 
-# Cria um semáforo que controla o acesso à lista de clientes - definindo 1 thread por vez.
-SEMAFORO_CLIENTES = threading.Semaphore(1)
-# Cria um semáforo que controla o acesso à lista de respostas - definindo 1 thread por vez.
-SEMAFORO_RESPOSTAS = threading.Semaphore(1)
-# Cria um semáforo que controla a conexão dos clientes - é bloqueadao até todos conectarem.
+# Garante que apenas uma thread acesse a lista de clientes por vez.
+SEMAFORO_CLIENTES = threading.Semaphore(1) 
+# Garante que apenas uma thread acesse a lista de respostas por vez.
+SEMAFORO_RESPOSTAS = threading.Semaphore(1) 
+# Controla se todos os clientes estão conectados.
 SEMAFORO_TODOS_CONECTADOS = threading.Semaphore(0)
-# Cria um semáforo que controla se todos os clientes responderam - é bloqueadao até todos responderem.
+# Controla se todos os clientes responderam.
 SEMAFORO_TODOS_RESPONDERAM = threading.Semaphore(0)
+# Garante que que apenas uma thread sorteie a letra por vez.
+SEMAFORO_LETRA = threading.Semaphore(1)
+# Avisa que a letra foi sorteada e pode ser enviada.
+SEMAFORO_LETRA_PRONTA = threading.Semaphore(0)
 
-# Cria uma lista que define os temas que serão usados no jogo.
 TEMAS = ["Nome", "Cidade", "Animal", "Objeto"]
+LETRA_RODADA = [""] # Lista para guardar a letra sorteada - é vazia pois o valor é atualizado a cada rodada, e precisa ser mutável para que as threads possam acessar a letra sorteada.
 
-# Cria a função que envia as mensagens para todos.
+# Envia mensagem para todos os clientes.
 def broadcast(msg):
 
-    # Tenta acessar a lista de clientes.
-    SEMAFORO_CLIENTES.acquire()
-    # Percorre todos os clientes.
+    SEMAFORO_CLIENTES.acquire() # Bloqueia o acesso à lista de clientes para não ser modificada enquanto está em uso
     for c in CLIENTES:
-        # Tenta enviar a mensagem, se houver exceção ele para.
-        try:
+        # Tenta enviar a mensagem para o cliente, se der erro, ele ignora, pois os erros de conexão são tratados em threds individuais.
+        try: 
             c["conn"].sendall(msg.encode("utf-8"))
         except:
             pass
-    # Libera a lista de clientes.
-    SEMAFORO_CLIENTES.release()
 
-# Cria a função que roda os clientes.
+    SEMAFORO_CLIENTES.release() # Libera o acesso à lista de clientes para outras threads.
+
+
+# Gerencia o ciclo de um jogador : cadastro, rodadas e pontuação.
 def atender_cliente(conn, addr):
 
     global RESPOSTAS
@@ -59,30 +57,49 @@ def atender_cliente(conn, addr):
         # Adiciona os jogadores, registrando a conexão, o nome e o endereço do jogador.
         SEMAFORO_CLIENTES.acquire()
         CLIENTES.append({"conn": conn, "nome": nome, "addr": addr})
-        # Inicializa a pontuação do jogador em 0.
-        PONTUACOES[nome] = 0
+        PONTUACOES[nome] = 0 # Registra o nome do jogador na lista de pontuações.
 
         # Se a quantidade de jogadores for atingida, libera todas as threads.
         if len(CLIENTES) == N_JOGADORES:
             for _ in range(N_JOGADORES):
                 SEMAFORO_TODOS_CONECTADOS.release()
         SEMAFORO_CLIENTES.release()
-        # Espera todos entrarem.
-        SEMAFORO_TODOS_CONECTADOS.acquire()
+        SEMAFORO_TODOS_CONECTADOS.acquire() # Espera todos entrarem.
 
         # Percorre todas as rodadas.
         for rodada in range(N_RODADAS):
-            # Faz o sorteio das letras.
-            letra = random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-            # Envia os dados da rodada - número da rodada, letra sorteada e os temas que serão respondidos.
-            conn.sendall(f"\nRodada {rodada+1} - Letra: {letra}\n".encode("utf-8"))
-            conn.sendall(f"TEMAS: {', '.join(TEMAS)}\n".encode("utf-8"))
-            
+            SEMAFORO_LETRA.acquire()
+            # Apenas o primeiro jogador sorteia a letra, para que todos recebam a mesma opção na rodada.
+            if CLIENTES[0]["nome"] == nome:
+                letra = random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+                # Armazena a letra na lista de letras.
+                LETRA_RODADA[0] = letra
+                # Formata a mensagem da rodada, com o número da rodada, a letra, e os temas.
+                msg_rodada = (
+                    f"\nRodada {rodada+1} - Letra: {letra}\nTEMAS: {', '.join(TEMAS)}\n"
+                )
+                # Libera todos os jogadores para receberem.
+                for _ in range(N_JOGADORES):
+                    SEMAFORO_LETRA_PRONTA.release()
+                SEMAFORO_LETRA.release()
+            else:
+                SEMAFORO_LETRA.release()
+
+            # Todos esperam a letra estar pronta.
+            SEMAFORO_LETRA_PRONTA.acquire()
+
+            # Envia para cada cliente individualmente.
+            conn.sendall(
+                f"\nRodada {rodada+1} - Letra: {LETRA_RODADA[0]}\nTEMAS: {', '.join(TEMAS)}\n".encode(
+                    "utf-8"
+                )
+            )
+
             # Recebe as respostas dos jogadores.
             data = conn.recv(4096).decode("utf-8")
 
             # Formata respostas recebidas, com o nome do jogador, endereço,
-            #horário que a mensagem foi recebida e o texto da mensagem.
+            # horário que a mensagem foi recebida e o texto da mensagem.
             horario = datetime.now().strftime("%H:%M:%S")
             msg_formatada = f"[{nome} ({addr[0]}) {horario}]: {data}"
 
@@ -97,9 +114,9 @@ def atender_cliente(conn, addr):
                 # Percorre cada jogador e para cada um libera o semáforo.
                 for _ in range(N_JOGADORES):
                     SEMAFORO_TODOS_RESPONDERAM.release()
-            # Libera o acessoa à lista de respostas.
+            # Libera o acesso    à lista de respostas.
             SEMAFORO_RESPOSTAS.release()
-            
+
             # A thread para e só continua se todos responderam
             SEMAFORO_TODOS_RESPONDERAM.acquire()
 
@@ -107,11 +124,12 @@ def atender_cliente(conn, addr):
             if nome == CLIENTES[0]["nome"]:
                 calcular_pontos()
                 enviar_pontuacoes()
-            
+
             # Threads esperam para ninguém avançar sem que o cálculo tenha terminado.
             SEMAFORO_TODOS_RESPONDERAM.acquire()
 
-# Cria a função que soma os pontos dos jogadores.
+
+# Calcula a pontuação dos jogadores.
 def calcular_pontos():
     global RESPOSTAS
 
@@ -119,21 +137,22 @@ def calcular_pontos():
     for i in range(len(TEMAS)):
         # Pega as respostas dos jogadores.
         respostas_coluna = [r[1][i].strip().lower() for r in RESPOSTAS]
-        
+
         # Percorre cada jogador
         for nome, respostas in RESPOSTAS:
-            # Pega a reposta do jogador na categoria específica
+            # Pega a resposta do jogador na categoria específica
             resposta = respostas[i].strip().lower()
-            # Verifica se a resposta é unica - se for recebe 3 pontos, senão recebe 1 ponto.    
+            # Verifica se a resposta é unica - se for recebe 3 pontos, senão recebe 1 ponto.
             if respostas_coluna.count(resposta) == 1:
                 PONTUACOES[nome] += 3
             else:
                 PONTUACOES[nome] += 1
 
-    # Inicia as respostas para a próxima rodada.
+    # Reinicia as respostas para a próxima rodada.
     RESPOSTAS = []
 
-# Cria a função que envia as pontuações aos jogadores.
+
+# Envia as pontuações para todos os jogadore.
 def enviar_pontuacoes():
 
     resultado = "\nPontuações:\n"
@@ -150,7 +169,8 @@ def enviar_pontuacoes():
     # Envia a mensagem para todos os jogadores.
     broadcast(resultado)
 
-# Cria a função que estabelece as conexões.
+
+# Inicia o servidor.
 def iniciar_servidor():
     # Cria a conexão, que termina quando o socket é fechado.
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -159,12 +179,15 @@ def iniciar_servidor():
         s.listen()
         print("Servidor está aguardando jogadores")
 
-        # Mantém o servidor rodando
+        #mantém o servidor rodando para novos jogadores se conectarem mesmo durante a partida.
         while True:
             # Aceita pedidos de conexão.
-            conn, addr = s.accept() 
+            conn, addr = s.accept()
             # Cria uma thread para atender o cliente conectado.
-            threading.Thread(target=atender_cliente, args=(conn, addr), daemon=True).start()
+            threading.Thread(
+                target=atender_cliente, args=(conn, addr), daemon=True
+            ).start()
+
 
 if __name__ == "__main__":
     iniciar_servidor()

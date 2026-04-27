@@ -4,11 +4,11 @@ import socket
 from datetime import datetime
 
 # Aceita conexões de qualquer lugar.
-HOST = "0.0.0.0" 
+HOST = "0.0.0.0"
 # Porta para conexão com o produtor.
-PORTA_ENTRADA = 9002  
+PORTA_ENTRADA = 9002
 # Porta para conexão com o consumidor.
-PORTA_SAIDA = 9003    #
+PORTA_SAIDA = 9003  #
 
 # Cria uma lista que guarda as mensagens recebidas do produtor.
 FILA = []
@@ -16,11 +16,11 @@ FILA = []
 CLIENTES_TELA = []
 
 # Cria um semáforo que controla o acesso à fila - definindo 1 thread por vez.
-SEMAFORO_ACESSO_FILA = threading.Semaphore(1) 
+SEMAFORO_ACESSO_FILA = threading.Semaphore(1)
 # Cria um semáforo que controla o número de itens disponiveis na lista - inicializando com 0.
-SEMAFORO_ITENS_FILA = threading.Semaphore(0)  
+SEMAFORO_ITENS_FILA = threading.Semaphore(0)
 # Cria um semáforo que controla o acesso à lista de clientes - definindo 1 thread por vez.
-SEMAFORO_CLIENTES = threading.Semaphore(1)    
+SEMAFORO_CLIENTES = threading.Semaphore(1)
 
 # Cria a função que coloca as mensagens na fila.
 def produzir(mensagem):
@@ -34,7 +34,8 @@ def produzir(mensagem):
     SEMAFORO_ACESSO_FILA.release()
     # Adiciona um novo item na lista.
     SEMAFORO_ITENS_FILA.release()
-    
+
+
 # Cria a função que tira as mensagens da fila.
 def consumir():
 
@@ -48,10 +49,11 @@ def consumir():
     # Devolve a mensagem.
     return mensagem
 
-# Cria a função que escuta clientes.
+
+# Cria a função que aceita conexões dos produtores.
 def escutar_teclado():
 
-  # Cria a conexão, que termina quando o socket é fechado.
+    # Cria a conexão, que termina quando o socket é fechado.
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         # Permite reutilizar a porta.
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -59,13 +61,16 @@ def escutar_teclado():
         s.bind((HOST, PORTA_ENTRADA))
         # Começa a escutar conexões.
         s.listen()
-        print(f"[*] Aguardando Teclados na porta {PORTA_ENTRADA}...")
-    
+        print(f"[*] Aguardando Produtores na porta {PORTA_ENTRADA}...")
+
         while True:
             # Se alguém conectou, aceita a conexão.
             conn, addr = s.accept()
             # Criar uma thread para cada teclado que permite múltiplos digitadores.
-            threading.Thread(target=atender_produtor, args=(conn, addr), daemon=True).start()
+            threading.Thread(
+                target=atender_produtor, args=(conn, addr), daemon=True
+            ).start()
+
 
 # Cria a função que atende o produtor.
 def atender_produtor(conn, addr):
@@ -82,12 +87,15 @@ def atender_produtor(conn, addr):
                 # Guarda as mensagens recebidas
                 data = conn.recv(1024)
                 # Se o cliente saiu, encerra a conexão
-                if not data: break
-                
+                if not data:
+                    break
+
                 # Formatação das mensagens - pega a hora atual e monta a mensagem com o nickname,
-                #endereço do cliente, horário e o texto da mensagem.
+                # endereço IP do cliente, horário e o texto da mensagem.
                 horario = datetime.now().strftime("%H:%M:%S")
-                msg_formatada = f"[{nickname} ({addr[0]}) {horario}]: {data.decode('utf-8')}"
+                msg_formatada = (
+                    f"[{nickname} ({addr[0]}) {horario}]: {data.decode('utf-8')}"
+                )
                 # Coloca a mensagem formatada na fila.
                 produzir(msg_formatada)
                 # Responde para o cliente que a mensagem foi recebida.
@@ -96,6 +104,7 @@ def atender_produtor(conn, addr):
                 # Tratamento de exceções - qualquer erro que ocorrer é exibido sua causa.
         except Exception as e:
             print(f"Erro com produtor {addr}: {e}")
+
 
 # Cria a função que gerencia as telas
 def gerenciar_telas():
@@ -108,7 +117,7 @@ def gerenciar_telas():
         s.bind((HOST, PORTA_SAIDA))
         s.listen()
         print(f"[*] Aguardando Telas na porta {PORTA_SAIDA}...")
-        
+
         while True:
             # Aceita conexões do consumidor
             conn, addr = s.accept()
@@ -120,18 +129,20 @@ def gerenciar_telas():
             SEMAFORO_CLIENTES.release()
             print(f"[+] Tela conectada: {addr}")
 
-  # Cria a função que envia as mensagens para todos os clientes conectados.
+
+# Cria a função que envia as mensagens para todos os clientes conectados.
 def thread_distribuidora():
 
     while True:
         # Obtém a mensagem da fila.
         msg = consumir()
 
-        if not msg: continue
+        if not msg:
+            continue
         # Pega um cliente da fila.
         SEMAFORO_CLIENTES.acquire()
         # Percorre todos os clientes conectados.
-        for cliente in list(CLIENTES_TELA):
+        for cliente in list(CLIENTES_TELA): # list para evitar a modificação da lista durante a iteração.
             # Tenta enviar a mensagem criptografada para o cliente.
             try:
                 cliente.sendall(f"{msg}\n".encode("utf-8"))
@@ -141,8 +152,8 @@ def thread_distribuidora():
                 cliente.close()
         SEMAFORO_CLIENTES.release()
 
-# Cria a função que cria as threads e as inicia.
 
+# Cria a função que cria as threads e as inicia.
 def main():
 
     # Thread para escutar quem envia dados.
@@ -156,12 +167,13 @@ def main():
     t1.start()
     t2.start()
     t3.start()
-    
+
     try:
         # Mantém o servidor rodando.
-        t1.join() 
+        t1.join()
     except KeyboardInterrupt:
         print("\nServidor finalizado.")
+
 
 if __name__ == "__main__":
     main()
